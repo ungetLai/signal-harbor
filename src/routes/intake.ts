@@ -30,16 +30,30 @@ async function dispatchSignal(payload: any, headers: any): Promise<void> {
       message = '📡 GitHub Webhook 測試連線成功！訊號港口已就緒。';
     } else if (eventType === 'pull_request') {
       const action = payload.action;
-      const title = payload.pull_request?.title;
+      const title = payload.pull_request?.title || '';
       const author = payload.pull_request?.user?.login;
       const url = payload.pull_request?.html_url;
-      message = `🚀 **Pull Request ${action}**\n作者: ${author}\n標題: ${title}\n連結: ${url}`;
+
+      // 解析秘密簽名 [名字 圖徽]
+      const signatureMatch = title.match(/\[(.*?) (.*?)\]$/);
+      const displayName = signatureMatch ? `${signatureMatch[2]} ${signatureMatch[1]}` : author;
+      
+      message = `🚀 **PR ${action}**\n戰士: ${displayName}\n內容: ${title.replace(/\[.*?\]$/, '').trim()}\n情報: ${url}`;
     } else if (eventType === 'push') {
       const repo = payload.repository?.full_name;
       const pusher = payload.pusher?.name;
-      const ref = payload.ref;
-      const commitCount = payload.commits?.length || 0;
-      message = `🛠️ **Push Event**\n倉庫: ${repo}\n推送者: ${pusher}\n分支: ${ref}\nCommit 數量: ${commitCount}`;
+      const ref = payload.ref.replace('refs/heads/', '');
+      const commits = payload.commits || [];
+      
+      let commitLogs = '';
+      commits.forEach((c: any) => {
+        const msg = c.message || '';
+        const sigMatch = msg.match(/\[(.*?) (.*?)\]$/);
+        const sig = sigMatch ? `${sigMatch[2]} ${sigMatch[1]}` : pusher;
+        commitLogs += `\n• ${sig}: ${msg.replace(/\[.*?\]$/, '').trim()}`;
+      });
+
+      message = `🛠️ **地盤動向 (${ref})**\n倉庫: ${repo}${commitLogs}`;
     } else {
       // Generic fallback
       const repo = payload.repository?.full_name || '未知倉庫';
