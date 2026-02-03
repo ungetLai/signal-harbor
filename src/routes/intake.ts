@@ -113,8 +113,20 @@ async function forwardToOpenClaw(text: string, url?: string, token?: string): Pr
       }),
     });
 
-    const result = await response.json();
-    console.log('Forwarded to OpenClaw:', result);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Failed to forward to OpenClaw. Status: ${response.status} ${response.statusText}. Response: ${errorText}`);
+      return;
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const result = await response.json();
+      console.log('Forwarded to OpenClaw:', result);
+    } else {
+      const textResult = await response.text();
+      console.log('Forwarded to OpenClaw (Plain Text):', textResult);
+    }
   } catch (error) {
     console.error('Failed to forward to OpenClaw:', error);
   }
